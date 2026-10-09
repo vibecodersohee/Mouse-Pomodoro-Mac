@@ -57,15 +57,37 @@ enum SceneCatalog {
     }
 
     static let shopItems: [ShopItem] = [
-        ShopItem(id: "break-washroom", name: "Washroom", slot: .breakTime, unlockLevel: 2, holiday: nil),
-        ShopItem(id: "break-room", name: "Cafeteria", slot: .breakTime, unlockLevel: 2, holiday: nil),
+        ShopItem(id: "studio-green", name: "Green Studio", slot: .breakTime, unlockLevel: 1, holiday: nil),
+        ShopItem(id: "studio-pink", name: "Pink Studio", slot: .breakTime, unlockLevel: 1, holiday: nil),
         ShopItem(id: "break-terrace", name: "Rooftop", slot: .breakTime, unlockLevel: 2, holiday: nil),
+        ShopItem(id: "break-room", name: "Cafeteria", slot: .breakTime, unlockLevel: 2, holiday: nil),
+        ShopItem(id: "break-washroom", name: "Washroom", slot: .breakTime, unlockLevel: 2, holiday: nil),
         ShopItem(id: "easter-park", name: "Easter", slot: .breakTime, unlockLevel: 3, holiday: .easter),
         ShopItem(id: "halloween-park", name: "Halloween", slot: .breakTime, unlockLevel: 3, holiday: .halloween),
         ShopItem(id: "christmas-park", name: "Christmas", slot: .breakTime, unlockLevel: 3, holiday: .christmas),
-        ShopItem(id: "studio-green", name: "Green Studio", slot: .focus, unlockLevel: 1, holiday: nil),
-        ShopItem(id: "studio-pink", name: "Pink Studio", slot: .focus, unlockLevel: 1, holiday: nil),
     ]
+
+    /// Sessions needed to reach `level` (the "Unlocks at level N · X sessions" line).
+    static func sessionsRequired(forLevel level: Int) -> Int {
+        levelThresholds[min(max(level, 1), levelThresholds.count) - 1]
+    }
+
+    /// The date window a holiday scene shows up on its own, e.g. "Oct 15 – Nov 1".
+    static func windowLabel(for holiday: HolidaySeason, on date: Date = Date()) -> String {
+        switch holiday {
+        case .christmas: return "Dec 1 – Jan 5"
+        case .halloween: return "Oct 15 – Nov 1"
+        case .easter:
+            let cal = Calendar.current
+            let year = cal.component(.year, from: date)
+            guard let easter = computusEaster(year: year),
+                  let start = cal.date(byAdding: .day, value: -14, to: easter),
+                  let end = cal.date(byAdding: .day, value: 6, to: easter) else { return "Around Easter" }
+            let f = DateFormatter()
+            f.dateFormat = "MMM d"
+            return "\(f.string(from: start)) – \(f.string(from: end))"
+        }
+    }
 
     // MARK: - Basic scenes (office evolution + seasonal park)
 

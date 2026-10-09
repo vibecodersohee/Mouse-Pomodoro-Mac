@@ -1,7 +1,8 @@
 import SwiftUI
 
 /// Ported from the Figma "Header" component shared by every screen:
-/// mouse name (left), cheese count pill (center), action icons (right).
+/// mouse name (left), cheese count pill (center), action icons (right:
+/// weekly stats, minimize, settings, quit).
 struct HeaderBar: View {
     let mouseName: String
     let cheeseLabel: String
@@ -10,6 +11,7 @@ struct HeaderBar: View {
     /// The plugin disables Minimize on the Plan screen.
     var collapseDisabled = false
     var onSettings: () -> Void = {}
+    var onQuit: () -> Void = {}
 
     var body: some View {
         HStack(spacing: 8) {
@@ -47,6 +49,7 @@ struct HeaderBar: View {
                     .disabled(collapseDisabled)
                     .opacity(collapseDisabled ? 0.3 : 1)
                 iconButton("icon-settings-cog", action: onSettings)
+                iconButton("icon-logout", action: onQuit)
             }
         }
         .padding(.horizontal, 16)

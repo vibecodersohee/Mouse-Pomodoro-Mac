@@ -12,6 +12,12 @@ enum DS {
         static let danger = SwiftUI.Color(hex: "#b85c3e")
         static let border = SwiftUI.Color(hex: "#a8b896")
         static let inputBackground = SwiftUI.Color(hex: "#fcfbf8")
+        static let shopItem = SwiftUI.Color(hex: "#fafafa")
+        static let shopItemActive = SwiftUI.Color(hex: "#f3f8e9")
+        static let shopItemActiveBorder = SwiftUI.Color(hex: "#9bbc7b")
+        static let shopItemLocked = SwiftUI.Color(hex: "#d2d2d2")
+        static let tabInactive = SwiftUI.Color(hex: "#bad693")
+        static let levelBanner = SwiftUI.Color(hex: "#41571b")
         static let overlayDim = SwiftUI.Color(hex: "#2e3a22").opacity(0.45)
     }
 
@@ -20,6 +26,30 @@ enum DS {
         static func medium(_ size: CGFloat) -> SwiftUI.Font { .custom("PixelifySans-Medium", size: size) }
         static func semibold(_ size: CGFloat) -> SwiftUI.Font { .custom("PixelifySans-SemiBold", size: size) }
         static func bold(_ size: CGFloat) -> SwiftUI.Font { .custom("PixelifySans-Bold", size: size) }
+    }
+}
+
+/// The design system's Toggle (Figma 233:5207): a 32×20 pill with a 14px white knob.
+/// Off = grey, On = green.
+struct PixelToggle: View {
+    @Binding var isOn: Bool
+
+    var body: some View {
+        Button { isOn.toggle() } label: {
+            ZStack(alignment: isOn ? .trailing : .leading) {
+                Capsule().fill(isOn ? SwiftUI.Color(hex: "#627548") : SwiftUI.Color(hex: "#a5a5a5"))
+                Capsule()
+                    .fill(isOn ? SwiftUI.Color(hex: "#92af6c") : SwiftUI.Color(hex: "#d2d2d2"))
+                    .padding(1)
+                Circle().fill(SwiftUI.Color.white).frame(width: 14, height: 14).padding(.horizontal, 3)
+            }
+                .frame(width: 32, height: 20)
+                .contentShape(Capsule())
+        }
+        .buttonStyle(.plain)
+        .accessibilityAddTraits(.isButton)
+        .accessibilityValue(isOn ? "On" : "Off")
+        .animation(.easeOut(duration: 0.12), value: isOn)
     }
 }
 
