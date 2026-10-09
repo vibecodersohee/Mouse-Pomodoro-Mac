@@ -26,7 +26,8 @@ struct ContentView: View {
                         collapseDisabled: engine.view == .plan,
                         onSettings: {
                             engine.overlay == .settings ? engine.closeSettings() : engine.openSettings()
-                        }
+                        },
+                        onQuit: { engine.openConfirmQuit() }
                     )
 
                     if engine.overlay == .weeklyStats {
@@ -348,6 +349,18 @@ struct ContentView: View {
                     onConfirm: { engine.confirmWrapUp() }
                 )
             }
+        case .confirmQuit:
+            ConfirmScrim {
+                ConfirmCard(
+                    title: "Quit Mouse Pomodoro?",
+                    subtitle: "Your progress is saved. See you soon!",
+                    keepGoingTitle: "Back",
+                    confirmTitle: "Quit",
+                    confirmIsDestructive: true,
+                    onKeepGoing: { engine.dismissQuit() },
+                    onConfirm: { NSApp.terminate(nil) }
+                )
+            }
         case .weeklyStats:
             EmptyView() // rendered in place of screen/bottom instead — see `body`
         }
@@ -395,6 +408,7 @@ private struct ConfirmScrim<Content: View>: View {
 private struct ConfirmCard: View {
     let title: String
     let subtitle: String
+    var keepGoingTitle = "Keep going!"
     let confirmTitle: String
     let confirmIsDestructive: Bool
     let onKeepGoing: () -> Void
@@ -414,7 +428,7 @@ private struct ConfirmCard: View {
             .frame(maxWidth: .infinity, alignment: .leading)
 
             SecondaryButtonRow(danger: [
-                ("Keep going!", false, onKeepGoing),
+                (keepGoingTitle, false, onKeepGoing),
                 (confirmTitle, confirmIsDestructive, onConfirm),
             ])
         }
@@ -427,9 +441,9 @@ private struct SettingsCard: View {
     @State private var dailyTotal: Int
     @State private var focusMinutes: Int
     @State private var breakMinutes: Int
-    @State private var tab: Tab = .session
+    @State private var tab: Tab = .settings
 
-    private enum Tab { case session, shop }
+    private enum Tab { case settings, shop }
 
     init(engine: TimerEngine) {
         self.engine = engine
@@ -440,46 +454,63 @@ private struct SettingsCard: View {
 
     var body: some View {
         VStack(spacing: 16) {
-            HStack(spacing: 0) {
-                tabButton("Session settings", tab: .session)
-                tabButton("Shop", tab: .shop)
-            }
-            .frame(maxWidth: .infinity)
-
-            if tab == .session {
-                Text("Customize your daily total sessions, focus and break durations.")
-                    .font(DS.Font.regular(12))
-                    .foregroundStyle(DS.Color.ink.opacity(0.7))
-                    .multilineTextAlignment(.center)
-
-                InputRow(label: "Daily total", value: $dailyTotal, bounds: 1...20, unit: "sessions")
-                InputRow(label: "Focus", value: $focusMinutes, bounds: 1...90, unit: "minutes")
-                InputRow(label: "Break", value: $breakMinutes, bounds: 1...30, unit: "minutes")
-
-                Toggle(isOn: Binding(
-                    get: { engine.showMenuBarTime },
-                    set: { engine.setShowMenuBarTime($0) }
-                )) {
-                    Text("Show time in menu bar")
-                        .font(DS.Font.regular(14))
-                        .foregroundStyle(DS.Color.ink)
+            VStack(alignment: .leading, spacing: 8) {
+                HStack(spacing: 0) {
+                    tabButton("Settings", tab: .settings)
+                    tabButton("Shop", tab: .shop)
                 }
-                .toggleStyle(.switch)
-                .tint(DS.Color.primaryButton)
+
+                if tab == .settings {
+                    settingsContent
+                } else {
+                    ShopTabView(engine: engine)
+                }
+            }
+            // Fixed so the modal doesn't change height between tabs (Figma: 320 max).
+            .frame(height: 234, alignment: .top)
+
+            HStack(spacing: 8) {
+                Button { engine.closeSettings() } label: {
+                    Text("Close")
+                        .font(DS.Font.semibold(14))
+                        .foregroundStyle(DS.Color.secondaryText)
+                        .frame(maxWidth: .infinity)
+                        .padding(8)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
 
                 PrimaryButton(title: "Save") {
                     engine.updateSettings(dailyTotal: dailyTotal, focusMinutes: focusMinutes, breakMinutes: breakMinutes)
                     engine.closeSettings()
                 }
+            }
+        }
+        .frame(width: 256)
+    }
 
-                Button("Quit Mouse Pomodoro") {
-                    NSApp.terminate(nil)
-                }
-                .buttonStyle(.plain)
-                .font(DS.Font.regular(11))
-                .foregroundStyle(.red.opacity(0.7))
-            } else {
-                ShopTabView(engine: engine)
+    private var settingsContent: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Set your daily sessions, focus length and break length.")
+                .font(DS.Font.regular(12))
+                .foregroundStyle(DS.Color.ink.opacity(0.7))
+                .multilineTextAlignment(.leading)
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+            InputRow(label: "Daily total", value: $dailyTotal, bounds: 1...20, unit: "sessions")
+            VStack(spacing: 8) {
+                InputRow(label: "Focus", value: $focusMinutes, bounds: 1...90, unit: "minutes")
+                InputRow(label: "Break", value: $breakMinutes, bounds: 1...30, unit: "minutes")
+            }
+            HStack {
+                Text("Show time in menu bar")
+                    .font(DS.Font.regular(14))
+                    .foregroundStyle(DS.Color.ink)
+                Spacer(minLength: 8)
+                PixelToggle(isOn: Binding(
+                    get: { engine.showMenuBarTime },
+                    set: { engine.setShowMenuBarTime($0) }
+                ))
             }
         }
     }
@@ -493,9 +524,10 @@ private struct SettingsCard: View {
                 .padding(.vertical, 4)
                 .overlay(alignment: .bottom) {
                     Rectangle()
-                        .fill(tab == target ? DS.Color.primaryButton : DS.Color.screenCard)
-                        .frame(height: 1)
+                        .fill(tab == target ? DS.Color.primaryButton : DS.Color.tabInactive)
+                        .frame(height: tab == target ? 2 : 1)
                 }
+                .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
     }
@@ -525,76 +557,213 @@ private struct InputRow: View {
     }
 }
 
-/// Shop tab inside Settings — every item costs 20 cheese; locked items are
-/// shown (not hidden) with a lock icon and "N sessions to go", and buying
-/// starts using the scene immediately (matches the plugin's non-punitive,
-/// spend-only-never-taken-away shop).
+/// Shop tab inside Settings (Figma 239:7681). Backgrounds only ever apply to
+/// Break time; Focus always shows the level's office. Every scene costs 20 cheese,
+/// locked scenes are shown (not hidden) with what unlocks them, and buying
+/// starts using the scene immediately (spend-only, nothing is ever taken away).
 private struct ShopTabView: View {
     @ObservedObject var engine: TimerEngine
 
-    var body: some View {
-        VStack(spacing: 10) {
-            Text("Every scene costs \(SceneCatalog.price) cheese.")
-                .font(DS.Font.regular(11))
-                .foregroundStyle(DS.Color.ink.opacity(0.6))
+    private var breakItems: [ShopItem] {
+        SceneCatalog.shopItems.filter { $0.holiday == nil }
+    }
 
-            ScrollView {
-                VStack(spacing: 8) {
-                    ForEach(SceneCatalog.shopItems) { item in
-                        shopRow(item)
-                    }
+    private var seasonalItems: [ShopItem] {
+        SceneCatalog.shopItems.filter { $0.holiday != nil }
+    }
+
+    /// "Basic park" is in use whenever no owned custom scene is picked.
+    private var basicInUse: Bool {
+        guard let id = engine.sceneBreakOverride else { return true }
+        return !engine.owned.contains(id)
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 16) {
+                Text("LV. \(engine.level)")
+                HStack(spacing: 4) {
+                    Image("icon-cheese")
+                        .renderingMode(.template)
+                        .resizable()
+                        .frame(width: 16, height: 16)
+                    Text("\(engine.cheeseLabel) cheese")
                 }
             }
-            .frame(maxHeight: 180)
+            .font(DS.Font.semibold(14))
+            .foregroundStyle(DS.Color.inkSoft)
+
+            Text("Backgrounds are applied during break time only.")
+                .font(DS.Font.regular(12))
+                .foregroundStyle(DS.Color.ink.opacity(0.7))
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+            ScrollView {
+                VStack(alignment: .leading, spacing: 8) {
+                    sectionTitle("Break scene")
+                    ShopItemRow(
+                        sceneName: SceneCatalog.basicBreakScene(),
+                        name: "Basic park",
+                        detail: "Basic · Follows the season (now: \(SceneCatalog.season(for: Date()).capitalized))",
+                        state: basicInUse ? .inUse : .notInUse,
+                        onUse: { engine.setScene(nil, slot: .breakTime) }
+                    )
+                    ForEach(breakItems) { shopRow($0) }
+
+                    sectionTitle("Seasonal scene")
+                        .padding(.top, 8)
+                    ForEach(seasonalItems) { shopRow($0) }
+                }
+                .padding(.trailing, 12)
+            }
+            .scrollIndicators(.automatic)
         }
     }
 
+    private func sectionTitle(_ title: String) -> some View {
+        Text(title)
+            .font(DS.Font.semibold(14))
+            .foregroundStyle(DS.Color.ink)
+    }
+
     private func shopRow(_ item: ShopItem) -> some View {
-        let owned = engine.isOwned(item)
-        let unlocked = engine.isUnlocked(item)
-        let inUse = (item.slot == .focus ? engine.sceneFocusOverride : engine.sceneBreakOverride) == item.id
+        let state: ShopItemRow.State
+        if !engine.isUnlocked(item) {
+            state = .locked
+        } else if engine.isOwned(item) {
+            state = engine.sceneBreakOverride == item.id ? .inUse : .notInUse
+        } else {
+            state = .forSale(moreToGo: max(0, Int((Double(SceneCatalog.price) - engine.cheeseCount).rounded(.up))))
+        }
 
-        return HStack(spacing: 8) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(item.name)
-                    .font(DS.Font.semibold(13))
-                    .foregroundStyle(unlocked ? DS.Color.ink : DS.Color.ink.opacity(0.4))
-                if !unlocked {
-                    let sessionsToGo = SceneCatalog.levelThresholds[min(item.unlockLevel - 1, SceneCatalog.levelThresholds.count - 1)] - engine.totalSessionsCompleted
-                    Text("\(max(sessionsToGo, 0)) sessions to go")
-                        .font(DS.Font.regular(10))
-                        .foregroundStyle(DS.Color.ink.opacity(0.4))
+        let detail: String
+        if state == .locked {
+            let level = item.unlockLevel
+            detail = "Unlocks at level \(level) · \(SceneCatalog.sessionsRequired(forLevel: level)) sessions"
+        } else if let holiday = item.holiday {
+            detail = "Break scene · Shows \(SceneCatalog.windowLabel(for: holiday))"
+        } else {
+            detail = "Break scene"
+        }
+
+        return ShopItemRow(
+            sceneName: item.id,
+            name: item.name,
+            detail: detail,
+            state: state,
+            onUse: { engine.setScene(item.id, slot: item.slot) },
+            onBuy: { engine.purchase(item) }
+        )
+    }
+}
+
+/// Figma "shop item" component (236:5812): 72×60 thumbnail, name, description and
+/// a state-dependent action row — Before purchase / Not in use / In use / Locked.
+private struct ShopItemRow: View {
+    enum State: Equatable {
+        case forSale(moreToGo: Int)
+        case notInUse
+        case inUse
+        case locked
+    }
+
+    let sceneName: String
+    let name: String
+    let detail: String
+    let state: State
+    var onUse: () -> Void = {}
+    var onBuy: () -> Void = {}
+
+    private var background: Color {
+        switch state {
+        case .inUse: return DS.Color.shopItemActive
+        case .locked: return DS.Color.shopItemLocked
+        default: return DS.Color.shopItem
+        }
+    }
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Image("scene-\(sceneName)")
+                .resizable()
+                .aspectRatio(contentMode: .fill)
+                .frame(width: 72, height: 60)
+                .clipShape(RoundedRectangle(cornerRadius: 4))
+                .overlay {
+                    if state == .locked {
+                        RoundedRectangle(cornerRadius: 4).fill(SwiftUI.Color.black.opacity(0.25))
+                    }
                 }
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text(name)
+                    .font(DS.Font.bold(14))
+                    .foregroundStyle(SwiftUI.Color(hex: "#1f2717"))
+                Text(detail)
+                    .font(DS.Font.medium(10))
+                    .foregroundStyle(DS.Color.ink)
+                    .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
+                action
             }
-
-            Spacer(minLength: 4)
-
-            if !unlocked {
-                Image(systemName: "lock.fill")
-                    .foregroundStyle(DS.Color.ink.opacity(0.3))
-            } else if owned {
-                Button(inUse ? "In use" : "Use") {
-                    // Tapping while already in use reverts to the automatic
-                    // office/seasonal scene — there's no separate "Use automatic"
-                    // affordance here, so this button doubles as the toggle.
-                    engine.setScene(inUse ? nil : item.id, slot: item.slot)
-                }
-                .buttonStyle(.plain)
-                .font(DS.Font.semibold(12))
-                .foregroundStyle(inUse ? DS.Color.primaryButton : DS.Color.secondaryText)
-            } else {
-                Button("\(SceneCatalog.price) 🧀") {
-                    engine.purchase(item)
-                }
-                .buttonStyle(.plain)
-                .font(DS.Font.semibold(12))
-                .foregroundStyle(engine.cheeseCount >= Double(SceneCatalog.price) ? DS.Color.primaryButton : DS.Color.ink.opacity(0.4))
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 4)
+        .frame(maxWidth: .infinity)
+        .background(background)
+        .clipShape(RoundedRectangle(cornerRadius: 4))
+        .overlay {
+            if state == .inUse {
+                RoundedRectangle(cornerRadius: 4).strokeBorder(DS.Color.shopItemActiveBorder, lineWidth: 1)
             }
         }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 6)
-        .background(DS.Color.inputBackground)
-        .clipShape(RoundedRectangle(cornerRadius: 6))
+    }
+
+    @ViewBuilder
+    private var action: some View {
+        switch state {
+        case .forSale(let moreToGo):
+            HStack(spacing: 8) {
+                HStack(spacing: 4) {
+                    Image("icon-cheese")
+                        .renderingMode(.template)
+                        .resizable()
+                        .frame(width: 16, height: 16)
+                    Text("\(SceneCatalog.price)")
+                        .font(DS.Font.semibold(14))
+                }
+                .foregroundStyle(DS.Color.ink)
+                if moreToGo > 0 {
+                    Text("\(moreToGo) more to go")
+                        .font(DS.Font.medium(10))
+                        .foregroundStyle(SwiftUI.Color(hex: "#576d40"))
+                } else {
+                    pill("Buy", dimmed: false, action: onBuy)
+                }
+            }
+        case .notInUse:
+            pill("Use", dimmed: false, action: onUse)
+        case .inUse:
+            pill("In use", dimmed: true, action: nil)
+        case .locked:
+            pill("Locked", dimmed: true, action: nil)
+        }
+    }
+
+    private func pill(_ title: String, dimmed: Bool, action: (() -> Void)?) -> some View {
+        Button { action?() } label: {
+            Text(title)
+                .font(DS.Font.semibold(12))
+                .foregroundStyle(DS.Color.secondaryText)
+                .padding(4)
+                .background(dimmed ? SwiftUI.Color.black.opacity(0.1) : SwiftUI.Color.clear)
+                .clipShape(RoundedRectangle(cornerRadius: 8))
+                .opacity(dimmed ? 0.6 : 1)
+                .contentShape(RoundedRectangle(cornerRadius: 8))
+        }
+        .buttonStyle(.plain)
+        .disabled(action == nil)
     }
 }
 
@@ -728,6 +897,7 @@ private struct WeeklyStatsView: View {
     var body: some View {
         VStack(spacing: 0) {
             ScreenCard(fixedHeight: nil) {
+                levelBanner
                 weekHeader
                 statsRow
                 if let chip = engine.statsStreakChipText {
@@ -746,6 +916,18 @@ private struct WeeklyStatsView: View {
                 SecondaryButtonRow(items: [("Back to timer", { engine.closeWeeklyStats() })])
             }
         }
+    }
+
+    /// "LV. 2 · Total 23 sessions" (Figma 236:6012).
+    private var levelBanner: some View {
+        let total = engine.totalSessionsCompleted
+        return Text("LV. \(engine.level) · Total \(total) \(total == 1 ? "session" : "sessions")")
+            .font(DS.Font.semibold(14))
+            .foregroundStyle(SwiftUI.Color(hex: "#fafbf9"))
+            .frame(maxWidth: .infinity)
+            .padding(4)
+            .background(DS.Color.levelBanner)
+            .clipShape(RoundedRectangle(cornerRadius: 4))
     }
 
     private var weekHeader: some View {

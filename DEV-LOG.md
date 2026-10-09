@@ -26,7 +26,7 @@ Signing is **Automatic** with team `8VQQ8JN5VJ` (set in `project.pbxproj`) — c
 if you fork. An unsigned/ad-hoc build runs but **notifications are silently dropped** (see *Gotchas*).
 
 The app is an *accessory* app (`LSUIElement`): no Dock icon, no menu bar menu. It lives in the status
-item; **Quit** is in Settings → Session settings (there is no ⌘Q).
+item; **Quit** is the logout icon in the header, behind a confirm modal (there is no ⌘Q).
 
 ## Project layout
 
@@ -49,7 +49,7 @@ item; **Quit** is in Settings → Session settings (there is no ⌘Q).
 
 ### State machine
 `view`: `idle → plan → focus ⇄ (paused) → complete → break ⇄ (paused) → (auto-chain to focus, or entireComplete) → idle`
-plus `overlay`: `none | naming | settings | confirmEnd | confirmWrap | weeklyStats`, and an independent
+plus `overlay`: `none | naming | settings | confirmEnd | confirmWrap | confirmQuit | weeklyStats`, and an independent
 `compact` flag. Same shape as the plugin; names differ only where Swift keywords force it (`breakTime`).
 
 - **Timestamp timing.** A running session stores `endAt`; a 250 ms poll derives `remaining`. Pausing
@@ -82,7 +82,7 @@ days{yyyy-MM-dd: {s,m,c}}, noteDay, compact, showMenuBarTime, owned[], sceneFocu
 ### Windows
 - **Full size** = an `NSPopover` anchored to the status item, 340 wide; height per screen from
   `TimerEngine.popoverHeight` (Idle/Plan 399 · Focus/Break 440 · Complete 372 · Entire-complete 392 ·
-  Weekly stats 458, 496 with the streak chip). We size the popover ourselves
+  Weekly stats 496, 534 with the streak chip). We size the popover ourselves
   (`NSHostingController.sizingOptions = []`, `animates = false`) — see *Gotchas #2*.
 - **Compact** = a separate borderless, always-on-top, draggable `NSPanel` (232×84), *not* attached to the
   menu bar. Position is remembered (`setFrameAutosaveName`); persisted compact mode reopens it on launch.
@@ -109,7 +109,7 @@ days{yyyy-MM-dd: {s,m,c}}, noteDay, compact, showMenuBarTime, owned[], sceneFocu
 | Weekly stats heatmap (13 wk × Mon–Sun), week navigation | ✅ rebuilt to the updated Figma frame |
 | Compact mode | ✅ — as a floating panel (plugin: a smaller plugin window) |
 | Scenes: office evolution (levels at 0/10/50/250/1000 sessions), seasonal parks, hemisphere by timezone, holiday windows | ✅ |
-| Shop (20 cheese/item, level-gated, "N sessions to go"), Green/Pink Studio are **Focus** scenes | ✅ |
+| Shop (20 cheese/item, level-gated). **Mac deliberately differs:** every custom background (incl. Green/Pink Studio) is **Break-only**; Focus always shows the level's office | ✅ |
 | Milestones 10/25/50/100/250/500/1000 with GIFs (m10 is the generic one) | ✅ |
 | Cloud sync | ❌ dropped by the plugin's own decision |
 | Plugin "break reminder only while Figma is frontmost" gap | ✅ **improved** — real system notifications work from any app |
@@ -126,7 +126,9 @@ days{yyyy-MM-dd: {s,m,c}}, noteDay, compact, showMenuBarTime, owned[], sceneFocu
 | Break footer label | "Pause break" (older frame) | "Pause" | Updated Figma `157:5157` |
 | Break dancing | Cursor over the whole screen card | Same (whole card), and whole strip in compact | Plugin behaviour |
 | Menu bar time, floating panel, click-to-open notifications | n/a | Mac-only additions | — |
-| Settings "Quit" | n/a | Only way to quit | Accessory app has no menu bar menu |
+| Quit | n/a | Header logout icon → "Quit Mouse Pomodoro?" modal (Back / Quit) | Accessory app has no menu bar menu |
+| Shop backgrounds | Studios are Focus scenes | All custom backgrounds are Break-only; a saved Studio-as-Focus choice migrates to Break | Updated Figma shop (`239:7681`) |
+| Settings/Shop footer | Single Save | Close + Save on both tabs; Save applies the three Settings fields (shop buys/"Use" apply immediately) | Figma `179:6159` / `239:7681` |
 
 ## Gotchas & lessons (read before changing things)
 
@@ -182,8 +184,8 @@ timer freezing behind both confirms, first-run (no name) path, a quit mid-sessio
 - **Not archived / notarized / App Store-ready.** Only Debug builds with an Apple Development signature
   have been run. Sandbox + hardened runtime are on; privacy strings, category, screenshots, versioning
   and an `-exportArchive` pass are all still to do. No IAP and no network by design.
-- **No tests**; no launch-at-login; no ⌘Q; Quit lives in Settings.
-- **Shop**: no purchase confirm dialog; no explicit "Use automatic" (folded into the In-use toggle).
+- **No tests**; no launch-at-login; no ⌘Q.
+- **Shop**: no purchase confirm dialog (a "Buy" pill appears once affordable); "Basic park" row is the explicit way back to automatic.
 - **Daily note** has 2 messages per pool (plugin: 23) and no `{name}` substitution.
 - **Hemisphere** detection is a shortened IANA-prefix list, not the plugin's full `SOUTH_TZ` regex — the
   occasional wrong season in an unlisted zone is expected (same caveat as the plugin; no override).
@@ -208,6 +210,22 @@ timer freezing behind both confirms, first-run (no name) path, a quit mid-sessio
 ---
 
 ## Log (newest first)
+
+### Oct 8 (later) — UI/UX pass on branch `ui-ux-improvements`
+- **Settings modal** (Figma `179:6159`): "Session settings" → **Settings**, left-aligned body text, new `PixelToggle`
+  (Figma `233:5207`) for "Show time in menu bar", footer is now **Close + Save**. Content area is a fixed 234pt so
+  the modal doesn't resize between the Settings and Shop tabs; active tab underline is 2pt.
+- **Quit** moved from Settings to a logout icon in the header (`icon-logout` asset, header `15:38`). New
+  `Overlay.confirmQuit` shows a Back / Quit confirm (`236:7236`); it does not freeze the clock (running sessions persist).
+- **Shop** (Figma `239:7681`, item `236:5812`): `LV. N` + cheese balance on top, `ShopItemRow` with
+  Before-purchase / Not-in-use / In-use / Locked states, sections "Break scene" and "Seasonal scene". A "Basic park"
+  row (auto seasonal park) replaces the old tap-In-use-to-revert trick. Copy: "Unlocks at level 3 · 50 sessions",
+  "N more to go", holiday rows say "Shows Oct 15 – Nov 1" (`SceneCatalog.windowLabel`).
+- **Background logic**: custom backgrounds apply to **Break only**. Green/Pink Studio moved to the Break slot;
+  `activeScene(.focus)` ignores overrides; an old `sceneFocus` value is migrated into `sceneBreak` on load.
+- **Weekly stats**: dark `LV. N · Total X sessions` banner at the top; popover height 496 / 534 (with streak chip).
+- Wording passes: Settings blurb, shop blurb ("Backgrounds are applied during break time only."), quit copy.
+- Verified by offscreen render against the Figma frames (settings, shop, quit, stats); not hand-clicked.
 
 ### Oct 8 — Design updates, wrap-up
 - **End session** confirm uses the danger (red) secondary state (Figma `179:6005`).

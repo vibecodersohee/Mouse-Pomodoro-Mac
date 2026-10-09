@@ -22,6 +22,7 @@ enum Overlay {
     case settings
     case confirmEnd
     case confirmWrap
+    case confirmQuit
     case weeklyStats
 }
 
@@ -94,8 +95,10 @@ final class TimerEngine: ObservableObject {
         compact = loaded.compact && loaded.mouseName != nil
         showMenuBarTime = loaded.showMenuBarTime
         owned = loaded.owned
-        sceneFocusOverride = loaded.sceneFocus
-        sceneBreakOverride = loaded.sceneBreak
+        // Custom backgrounds are Break-only now. A Green/Pink Studio picked while it was a
+        // Focus scene carries over as the Break choice (unless one was already set).
+        sceneFocusOverride = nil
+        sceneBreakOverride = loaded.sceneBreak ?? loaded.sceneFocus
         restoreRunning()
         selectedWeekStart = Self.startOfWeek(containing: Date())
         startPolling()
@@ -323,7 +326,7 @@ final class TimerEngine: ObservableObject {
     /// Popover height per screen (Figma frame heights). Static so the AppDelegate's
     /// `@Published` sinks can pass emitted values instead of reading stale state.
     static func popoverHeight(view: SessionView, overlay: Overlay, statsStreakChip: Bool) -> CGFloat {
-        if overlay == .weeklyStats { return statsStreakChip ? 496 : 458 }
+        if overlay == .weeklyStats { return statsStreakChip ? 534 : 496 }
         switch view {
         case .idle, .plan: return 399
         case .complete: return 372
@@ -396,10 +399,11 @@ final class TimerEngine: ObservableObject {
 
     var level: Int { SceneCatalog.level(for: totalSessionsCompleted) }
 
-    /// `activeScene(slot)`: manual choice (if owned) -> an owned holiday set
-    /// inside its date window -> basic (office evolution / seasonal park).
+    /// `activeScene(slot)`: Focus is always the level's office. Break: manual choice
+    /// (if owned) -> an owned holiday set inside its date window -> the seasonal park.
     func activeScene(_ slot: SceneSlot) -> String {
-        let override = slot == .focus ? sceneFocusOverride : sceneBreakOverride
+        guard slot == .breakTime else { return SceneCatalog.basicOfficeScene(level: level) }
+        let override = sceneBreakOverride
         if let override, owned.contains(override) {
             return override
         }
@@ -409,7 +413,7 @@ final class TimerEngine: ObservableObject {
                 return item.id
             }
         }
-        return slot == .focus ? SceneCatalog.basicOfficeScene(level: level) : SceneCatalog.basicBreakScene()
+        return SceneCatalog.basicBreakScene()
     }
 
     func isOwned(_ item: ShopItem) -> Bool { owned.contains(item.id) }
@@ -628,6 +632,16 @@ final class TimerEngine: ObservableObject {
     }
 
     func closeSettings() {
+        overlay = .none
+    }
+
+    /// Header quit button. No clock freeze: a running session is persisted and resumes
+    /// on relaunch, so quitting from here loses nothing.
+    func openConfirmQuit() {
+        overlay = .confirmQuit
+    }
+
+    func dismissQuit() {
         overlay = .none
     }
 
