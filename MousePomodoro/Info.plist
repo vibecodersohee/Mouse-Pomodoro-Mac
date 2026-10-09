@@ -4,6 +4,8 @@
 <dict>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>en</string>
+	<key>CFBundleDisplayName</key>
+	<string>Move Your Mouse - Tamagotchi Pomodoro Timer</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -29,7 +31,7 @@
 	<key>ATSApplicationFontsPath</key>
 	<string>.</string>
 	<key>NSHumanReadableCopyright</key>
-	<string></string>
+	<string>©2026 Sohee</string>
 	<key>NSPrincipalClass</key>
 	<string>NSApplication</string>
 </dict>

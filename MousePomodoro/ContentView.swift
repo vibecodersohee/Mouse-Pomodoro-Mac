@@ -352,7 +352,7 @@ struct ContentView: View {
         case .confirmQuit:
             ConfirmScrim {
                 ConfirmCard(
-                    title: "Quit Mouse Pomodoro?",
+                    title: "Quit Move Your Mouse?",
                     subtitle: "Your progress is saved. See you soon!",
                     keepGoingTitle: "Back",
                     confirmTitle: "Quit",

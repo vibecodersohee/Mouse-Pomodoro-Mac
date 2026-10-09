@@ -1,5 +1,6 @@
 # Mouse Pomodoro — macOS app · Dev log
 
+Product name: **Move Your Mouse - Tamagotchi Pomodoro Timer** (short form in the UI: "Move Your Mouse"; code/project still `MousePomodoro`).
 A native macOS **menu-bar** port of the Mouse Pomodoro Figma plugin: a tamagotchi-style
 pomodoro timer with a pixel-art mouse companion. Non-punitive by design — nothing is ever lost,
 only earned. Fully offline (no network entitlement, no accounts, no analytics).
@@ -206,7 +207,10 @@ entitlements in `MousePomodoro/MousePomodoro.entitlements`, bundle id `com.sohee
 1. **App icon**: current one is a first pass; supply a proper 1024×1024 master (not stored in the repo).
 2. **Info.plist**: ✅ done — `LSApplicationCategoryType` = productivity, `ITSAppUsesNonExemptEncryption` = NO,
    and version keys now read `$(MARKETING_VERSION)` / `$(CURRENT_PROJECT_VERSION)` (bump them in build settings
-   for each upload). `NSHumanReadableCopyright` is still empty — fill in before submitting.
+   for each upload). Copyright is "©2026 Sohee".
+   **Product name** (`CFBundleDisplayName`): "Move Your Mouse - Tamagotchi Pomodoro Timer". The Xcode target / `PRODUCT_NAME`
+   / bundle id stay `MousePomodoro` (renaming them would move the sandbox container and break the project paths).
+   Heads-up: App Store names max out at 30 characters (this is 44), and "Tamagotchi" is a Bandai trademark — see below.
 3. **Signing**: Apple Distribution cert + Mac App Store provisioning profile (team `8VQQ8JN5VJ`); only
    Apple Development–signed Debug builds have ever been run.
 4. **Archive & validate**: Product → Archive → Validate → Distribute (App Store Connect). Fix anything the
