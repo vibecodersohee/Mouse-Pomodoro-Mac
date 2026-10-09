@@ -204,7 +204,8 @@ timer freezing behind both confirms, first-run (no name) path, a quit mid-sessio
 Current build settings: `MARKETING_VERSION` 1.0, `CURRENT_PROJECT_VERSION` 1, sandbox + hardened runtime on,
 entitlements in `MousePomodoro/MousePomodoro.entitlements`, bundle id `com.soheeplays.MousePomodoro`.
 
-1. **App icon**: current one is a first pass; supply a proper 1024×1024 master (not stored in the repo).
+1. **App icon**: ✅ final pixel-mouse art (`Design/AppIcon-source-1024.png`) on the white macOS rounded tile with
+   shadow (`Design/AppIcon-1024.png`, 824pt tile / radius 185); all 10 sizes regenerated in `AppIcon.appiconset`.
 2. **Info.plist**: ✅ done — `LSApplicationCategoryType` = productivity, `ITSAppUsesNonExemptEncryption` = NO,
    and version keys now read `$(MARKETING_VERSION)` / `$(CURRENT_PROJECT_VERSION)` (bump them in build settings
    for each upload). Copyright is "©2026 Sohee".
