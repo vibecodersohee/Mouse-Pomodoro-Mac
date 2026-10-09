@@ -20,7 +20,7 @@ final class FloatingPanel: NSPanel {
 }
 
 @MainActor
-final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCenterDelegate {
+final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCenterDelegate, NSPopoverDelegate {
     private static let compactSize = NSSize(width: 232, height: 84)
     private static let compactFrameName = "MousePomodoroCompactPanel"
 
@@ -55,6 +55,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         pop.contentSize = NSSize(width: 340, height: engine.popoverHeight)
         pop.animates = false
         pop.behavior = .transient
+        pop.delegate = self
         pop.contentViewController = hosting
         popover = pop
 
@@ -91,7 +92,31 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
 
     // MARK: - Menu bar title
 
+    /// Latest title requested while the popover was open and the status item's width would
+    /// have changed. Applied on close: resizing the item mid-session slides it along the
+    /// menu bar and drags the anchored popover with it.
+    private var pendingTitle: String??
+
+    nonisolated func popoverDidClose(_ notification: Notification) {
+        Task { @MainActor in
+            if let pending = self.pendingTitle {
+                self.pendingTitle = nil
+                self.applyMenuBarTitle(pending)
+            }
+        }
+    }
+
     private func setMenuBarTitle(_ text: String?) {
+        let hasText = !(statusItem?.button?.attributedTitle.string.isEmpty ?? true)
+        if popover?.isShown == true, hasText != (text != nil) {
+            pendingTitle = .some(text)
+            return
+        }
+        pendingTitle = nil
+        applyMenuBarTitle(text)
+    }
+
+    private func applyMenuBarTitle(_ text: String?) {
         guard let button = statusItem?.button else { return }
         if let text {
             // Monospaced digits so the item doesn't jitter in width as the seconds tick.
