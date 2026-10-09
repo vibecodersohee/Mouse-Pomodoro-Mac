@@ -204,8 +204,9 @@ Current build settings: `MARKETING_VERSION` 1.0, `CURRENT_PROJECT_VERSION` 1, sa
 entitlements in `MousePomodoro/MousePomodoro.entitlements`, bundle id `com.soheeplays.MousePomodoro`.
 
 1. **App icon**: current one is a first pass; supply a proper 1024×1024 master (not stored in the repo).
-2. **Info.plist**: add `LSApplicationCategoryType` (e.g. `public.app-category.productivity`) and
-   `ITSAppUsesNonExemptEncryption = NO` (no network/crypto) — neither is set today.
+2. **Info.plist**: ✅ done — `LSApplicationCategoryType` = productivity, `ITSAppUsesNonExemptEncryption` = NO,
+   and version keys now read `$(MARKETING_VERSION)` / `$(CURRENT_PROJECT_VERSION)` (bump them in build settings
+   for each upload). `NSHumanReadableCopyright` is still empty — fill in before submitting.
 3. **Signing**: Apple Distribution cert + Mac App Store provisioning profile (team `8VQQ8JN5VJ`); only
    Apple Development–signed Debug builds have ever been run.
 4. **Archive & validate**: Product → Archive → Validate → Distribute (App Store Connect). Fix anything the
