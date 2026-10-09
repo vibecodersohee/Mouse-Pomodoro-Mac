@@ -4,8 +4,9 @@ A native macOS **menu-bar** port of the Mouse Pomodoro Figma plugin: a tamagotch
 pomodoro timer with a pixel-art mouse companion. Non-punitive by design — nothing is ever lost,
 only earned. Fully offline (no network entitlement, no accounts, no analytics).
 
-- **Status:** feature parity with the Figma plugin reached (Phases 1–3 minus the dropped cloud sync);
-  polish/bug-hunt pass done. **Not yet packaged for distribution** — see *Known gaps*.
+- **Status:** feature complete for v1.0 — plugin parity (minus the dropped cloud sync), polish/bug-hunt pass, and
+  the Oct 8 UI/UX pass (Settings, Shop, Quit, Weekly stats) are all merged to `main` (PR #1). **Next: App Store
+  submission** — see *App Store checklist*. Project is considered done for now.
 - **Source of truth for behaviour:** the plugin's [`../Dev/DEV-LOG.md`](../Dev/DEV-LOG.md) and
   [`../Dev/README.md`](../Dev/README.md). This log only records what is *specific to the Mac app*
   and where it deliberately differs.
@@ -87,7 +88,8 @@ days{yyyy-MM-dd: {s,m,c}}, noteDay, compact, showMenuBarTime, owned[], sceneFocu
 - **Compact** = a separate borderless, always-on-top, draggable `NSPanel` (232×84), *not* attached to the
   menu bar. Position is remembered (`setFrameAutosaveName`); persisted compact mode reopens it on launch.
   Compact is never restored before the mouse is named, and is blocked on the Plan screen.
-- **Menu bar**: the status item shows `mm:ss` next to the icon during Focus/Break (also while paused),
+- **Menu bar**: the status item shows `mm:ss` (Pixelify Sans Medium 14, digits kern-padded to the widest so the
+  width never changes as seconds tick) next to the icon during Focus/Break (also while paused),
   hidden otherwise; toggle in Settings ("Show time in menu bar", default on). Monospaced digits so the
   width doesn't jitter.
 - **Notifications** (`UserNotifications`): Focus complete / Break over. Clicking one opens the app
@@ -181,9 +183,7 @@ timer freezing behind both confirms, first-run (no name) path, a quit mid-sessio
 
 - **App icon is a first pass** — the idle sprite on a white rounded square (see the Oct 8 log entry). Fine
   for dev builds; revisit the artwork (and a 1024 App Store master) before distribution.
-- **Not archived / notarized / App Store-ready.** Only Debug builds with an Apple Development signature
-  have been run. Sandbox + hardened runtime are on; privacy strings, category, screenshots, versioning
-  and an `-exportArchive` pass are all still to do. No IAP and no network by design.
+- **Not archived / App Store-ready yet.** See *App Store checklist* below. No IAP and no network by design.
 - **No tests**; no launch-at-login; no ⌘Q.
 - **Shop**: no purchase confirm dialog (a "Buy" pill appears once affordable); "Basic park" row is the explicit way back to automatic.
 - **Daily note** has 2 messages per pool (plugin: 23) and no `{name}` substitution.
@@ -194,24 +194,43 @@ timer freezing behind both confirms, first-run (no name) path, a quit mid-sessio
 - Compact strip has no Figma frame for Idle or Entire-complete; those follow the plugin's `miniHTML()`.
 - Multi-display: the compact panel's *default* position is the main screen's top-right; after that it
   remembers wherever it was dragged (not validated against a since-disconnected display).
-- Streak chip lengthens the Weekly-stats popover (496 vs 458) — fine, but it's a special-case height.
+- Streak chip lengthens the Weekly-stats popover (534 vs 496) — fine, but it's a special-case height.
 - Dev machine state: testing seeded sample days/cheese into the author's sandboxed defaults; none of that is
   in the repo.
 
-## Possible next steps
+## App Store checklist (not started — the only remaining v1.0 work)
 
-1. Notarized/archived build (Developer ID or Mac App Store); final icon artwork.
-2. Launch at login (`SMAppService`), optional global shortcut to toggle the popover.
-3. Right-click menu on the status item (Quit / Settings) and ⌘Q handling.
-4. Expand the daily-note pool; add the purchase confirm + "Use automatic" to match the plugin exactly.
-5. A small `Tests/` target for `TimerEngine` (inject a clock; the engine reads `Date()` directly today).
-6. Re-check the Figma file for any frames added since: Idle / Entire-complete compact, shop UI, milestone screen.
+Current build settings: `MARKETING_VERSION` 1.0, `CURRENT_PROJECT_VERSION` 1, sandbox + hardened runtime on,
+entitlements in `MousePomodoro/MousePomodoro.entitlements`, bundle id `com.soheeplays.MousePomodoro`.
+
+1. **App icon**: current one is a first pass; supply a proper 1024×1024 master (not stored in the repo).
+2. **Info.plist**: add `LSApplicationCategoryType` (e.g. `public.app-category.productivity`) and
+   `ITSAppUsesNonExemptEncryption = NO` (no network/crypto) — neither is set today.
+3. **Signing**: Apple Distribution cert + Mac App Store provisioning profile (team `8VQQ8JN5VJ`); only
+   Apple Development–signed Debug builds have ever been run.
+4. **Archive & validate**: Product → Archive → Validate → Distribute (App Store Connect). Fix anything the
+   validator flags (icon sizes, entitlements).
+5. **Test the Release build** first: notifications (need a real signing identity), sticker save panel (sandbox
+   `files.user-selected.read-write`), quit mid-session + relaunch, first-run naming path.
+6. **App Store Connect listing**: name, subtitle, description, keywords, screenshots (menu bar popover; Mac
+   screenshot sizes), privacy answers ("Data Not Collected" — fully offline, no analytics), support URL,
+   age rating, price.
+7. **Clean-state check**: old test data lives in the author's sandboxed defaults (`defaults delete
+   com.soheeplays.MousePomodoro mousePomodoroState`) — verify with a clean state before taking screenshots.
+
+## Possible next steps (post-launch)
+
+1. Launch at login (`SMAppService`), optional global shortcut to toggle the popover.
+2. Right-click menu on the status item (Quit / Settings) and ⌘Q handling.
+3. Expand the daily-note pool; add a purchase confirm dialog (the plugin has one).
+4. A small `Tests/` target for `TimerEngine` (inject a clock; the engine reads `Date()` directly today).
+5. Re-check the Figma file for any frames added since: Idle / Entire-complete compact, milestone screen.
 
 ---
 
 ## Log (newest first)
 
-### Oct 8 (later) — UI/UX pass on branch `ui-ux-improvements`
+### Oct 8 (later) — UI/UX pass (merged via PR #1)
 - **Settings modal** (Figma `179:6159`): "Session settings" → **Settings**, left-aligned body text, new `PixelToggle`
   (Figma `233:5207`) for "Show time in menu bar", footer is now **Close + Save**. Content area is a fixed 234pt so
   the modal doesn't resize between the Settings and Shop tabs; active tab underline is 2pt.
@@ -224,6 +243,9 @@ timer freezing behind both confirms, first-run (no name) path, a quit mid-sessio
 - **Background logic**: custom backgrounds apply to **Break only**. Green/Pink Studio moved to the Break slot;
   `activeScene(.focus)` ignores overrides; an old `sceneFocus` value is migrated into `sceneBreak` on load.
 - **Weekly stats**: dark `LV. N · Total X sessions` banner at the top; popover height 496 / 534 (with streak chip).
+- **Menu bar polish** (same day): toggling "Show time in menu bar" changed the status item's width, sliding it and
+  the anchored popover. Width-changing title updates are now held while the popover is open and applied on close
+  (`pendingTitle` + `NSPopoverDelegate.popoverDidClose`). The time also switched to Pixelify Sans.
 - Wording passes: Settings blurb, shop blurb ("Backgrounds are applied during break time only."), quit copy.
 - Verified by offscreen render against the Figma frames (settings, shop, quit, stats); not hand-clicked.
 
