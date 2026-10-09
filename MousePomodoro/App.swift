@@ -119,11 +119,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
     private func applyMenuBarTitle(_ text: String?) {
         guard let button = statusItem?.button else { return }
         if let text {
-            // Monospaced digits so the item doesn't jitter in width as the seconds tick.
-            button.attributedTitle = NSAttributedString(
-                string: " " + text,
-                attributes: [.font: NSFont.monospacedDigitSystemFont(ofSize: 13, weight: .medium)]
-            )
+            // Product font (Pixelify Sans). Its "1" is narrower than the other digits, so pad
+            // every digit to the widest one — the item must not change width as seconds tick.
+            let font = NSFont(name: "PixelifySans-Medium", size: 14)
+                ?? NSFont.monospacedDigitSystemFont(ofSize: 13, weight: .medium)
+            let widths = "0123456789".map { ($0, NSAttributedString(string: String($0), attributes: [.font: font]).size().width) }
+            let widest = widths.map(\.1).max() ?? 0
+            let result = NSMutableAttributedString(string: " ", attributes: [.font: font])
+            for ch in text {
+                let w = widths.first { $0.0 == ch }?.1
+                var attrs: [NSAttributedString.Key: Any] = [.font: font]
+                if let w, w < widest { attrs[.kern] = widest - w }
+                result.append(NSAttributedString(string: String(ch), attributes: attrs))
+            }
+            button.attributedTitle = result
             button.imagePosition = .imageLeading
         } else {
             button.attributedTitle = NSAttributedString(string: "")
